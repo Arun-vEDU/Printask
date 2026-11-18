@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Printask</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Visitor counter (GoatCounter). Replace YOURCODE with your GoatCounter code. -->
+<script data-goatcounter="https://YOURCODE.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<style>
+  :root {
+    --bg: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --sub: #6c6c70;
+    --sep: rgba(60, 60, 67, .16); --fill: #e9e9ee; --bar: rgba(242, 242, 247, .85);
+    --blue: #007aff; --green: #34c759; --red: #ff3b30; --orange: #ff9500;
+    --radius: 18px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000; --card: #1c1c1e; --text: #f5f5f7; --sub: #98989f;
+      --sep: rgba(84, 84, 88, .65); --fill: #2c2c2e; --bar: rgba(0, 0, 0, .8);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 24px; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 10; background: var(--bar);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: .5px solid var(--sep); padding-top: env(safe-area-inset-top);
+  }
+  .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--fill); border-radius: 999px; padding: 7px 12px; font-size: 14px; min-width: 0; }
+  .pill .text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #b0b0b5; flex: none; }
+  .dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(52, 199, 89, .2); }
+
+  h1 { font-size: 34px; font-weight: 700; letter-spacing: -.02em; margin: 22px 0 2px; }
+  .sub { color: var(--sub); font-size: 15px; margin: 0 0 14px; }
+  h3 { font-size: 13px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; }
+
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin: 14px 0; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04); }
+
+  .field {
+    width: 100%; border: 0; outline: none; border-radius: 12px; background: var(--fill); color: var(--text);
+    padding: 14px 16px; font: inherit; font-size: 17px; -webkit-appearance: none; appearance: none;
+  }
+  .field::placeholder { color: var(--sub); }
+  .field:focus { box-shadow: 0 0 0 3px rgba(0, 122, 255, .35); }
+
+  .opt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: .5px solid var(--sep); font-size: 16px; }
+  .opt-row:last-of-type { border-bottom: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--fill); border-radius: 999px; padding: 5px 11px; font-size: 14px; color: var(--sub); }
+
+  .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; flex: 1; max-width: 260px; }
+  .opt { flex: 1; position: relative; }
+  .opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .opt span { display: block; text-align: center; padding: 7px 6px; border-radius: 8px; font-size: 14px; cursor: pointer; user-select: none; }
+  .opt input:checked + span { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+  .opt input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+  .switch { position: relative; display: inline-block; width: 51px; height: 31px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch .track { position: absolute; inset: 0; background: var(--fill); border-radius: 31px; transition: background .2s; }
+  .switch .track::before {
+    content: ""; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px;
+    background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,.25); transition: transform .2s;
+  }
+  .switch input:checked + .track { background: var(--green); }
+  .switch input:checked + .track::before { transform: translateX(20px); }
+
+  .btn {
+    border: 0; border-radius: 13px; padding: 13px 18px; min-height: 46px;
+    font: 600 17px Inter, -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--blue); color: #fff; cursor: pointer; transition: transform .08s, opacity .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(.97); opacity: .85; }
+  .btn.block { width: 100%; margin-top: 14px; }
+  .btn.gray { background: var(--fill); color: var(--blue); }
+  .btn.red { background: rgba(255, 59, 48, .12); color: var(--red); }
+  .btn.small { min-height: 34px; padding: 7px 13px; font-size: 14px; border-radius: 10px; }
+
+  .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .count { color: var(--sub); font-size: 14px; margin-bottom: 2px; }
+  .day { font-size: 13px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 2px; }
+  .day:first-of-type { margin-top: 8px; }
+
+  .item { display: flex; gap: 14px; padding: 12px 0; border-bottom: .5px solid var(--sep); }
+  .item:last-child { border-bottom: 0; }
+  .check {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid #c7c7cc; background: transparent;
+    flex: none; cursor: pointer; color: #fff; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; padding: 0; transition: background .2s, border-color .2s;
+  }
+  .item.done .check { background: var(--green); border-color: var(--green); }
+  .body { flex: 1; min-width: 0; }
+  .title { font-size: 17px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+  .item.done .title { color: var(--sub); text-decoration: line-through; }
+  .meta { font-size: 13px; color: var(--sub); margin-top: 3px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--orange); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 2px; }
+  .acts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .empty { color: var(--sub); text-align: center; padding: 22px 0; margin: 0; font-size: 15px; }
+  .note { color: var(--sub); font-size: 13px; line-height: 1.45; margin: 12px 2px 0; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; display: flex; align-items: flex-end; justify-content: center; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .sheet { background: var(--card); width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .sheet h2 { font-size: 20px; font-weight: 700; margin: 0 0 12px; text-align: center; }
+  .sheet .row { display: flex; gap: 10px; margin-top: 14px; }
+  .sheet .row .btn { flex: 1; }
+
+  .footer { text-align: center; color: var(--sub); font-size: 13px; padding: 18px 0 8px; }
+  .footer b { color: var(--text); font-weight: 600; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(10px);
+    background: rgba(40, 40, 42, .94); color: #fff; padding: 12px 18px; border-radius: 14px; font-size: 15px;
+    opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; max-width: 88%; text-align: center; z-index: 30;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <span class="pill"><span id="dot" class="dot"></span><span id="ptxt" class="text">Printer off</span></span>
+    <button class="btn small" id="pbtn">Connect</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>Printask</h1>
+  <p class="sub">Type a task and it prints on the office printer.</p>
+
+  <div class="card">
+    <input id="txt" class="field" type="text" placeholder="New task" autocomplete="off">
+    <div style="height:10px"></div>
+    <div class="opt-row"><span>Added from</span><span class="chip" id="devChip"></span></div>
+    <div class="opt-row">
+      <span>Priority</span>
+      <div class="seg">
+        <label class="opt"><input type="radio" name="pri" value="normal" checked><span>Normal</span></label>
+        <label class="opt"><input type="radio" name="pri" value="high"><span>High</span></label>
+      </div>
+    </div>
+    <div class="opt-row">
+      <span>Print now</span>
+      <label class="switch"><input id="prn" type="checkbox" checked><span class="track"></span></label>
+    </div>
+    <button class="btn block" id="addBtn">Add task</button>
+    <p class="note" id="browserNote"></p>
+  </div>
+
+  <div class="card">
+    <div class="list-head">
+      <h3 style="margin:0">Tasks</h3>
+      <button class="btn small gray" id="printOpen">Print open</button>
+    </div>
+    <div class="count" id="count"></div>
+    <div id="list"></div>
+  </div>
+
+  <div class="card">
+    <h3>Sticky note</h3>
+    <p class="note" style="margin:0 0 12px">Opens a small window that stays on top of your other windows, showing your open tasks. You can add and tick tasks there. Works in Chrome or Edge on a computer.</p>
+    <button class="btn block" id="stickyBtn">Open sticky note</button>
+  </div>
+
+  <div class="card">
+    <h3>Clean up</h3>
+    <div class="opt-row">
+      <span>Older than</span>
+      <div class="seg">
+        <label class="opt"><input type="radio" name="age" value="14" checked><span>2 weeks</span></label>
+        <label class="opt"><input type="radio" name="age" value="30"><span>1 month</span></label>
+        <label class="opt"><input type="radio" name="age" value="90"><span>3 months</span></label>
+      </div>
+    </div>
+    <div class="opt-row">
+      <span>Completed only</span>
+      <label class="switch"><input id="donly" type="checkbox"><span class="track"></span></label>
+    </div>
+    <button class="btn block red" id="cleanBtn">Delete old tasks</button>
+  </div>
+
+  <div class="card">
+    <button class="btn block gray" id="test">Test print</button>
+    <p class="note">Works in Chrome or Edge on a computer or Android phone. iPhone and iPad browsers cannot connect to Bluetooth printers from a web page. Tasks are saved on this device only.</p>
+  </div>
+
+  <div class="footer">Visitors: <b id="visitors">…</b></div>
+</div>
+
+<div id="sheet" class="overlay" hidden>
+  <div class="sheet">
+    <h2>Edit task</h2>
+    <input id="editTxt" class="field" type="text">
+    <div class="row">
+      <button class="btn gray" id="editCancel">Cancel</button>
+      <button class="btn" id="editSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = 'printask-v4';
+const GC_CODE = 'YOURCODE';                  // your GoatCounter code
+const SERVICES = [
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '000018f0-0000-1000-8000-00805f9b34fb',
+  '0000fff0-0000-1000-8000-00805f9b34fb',
+  '0000ae30-0000-1000-8000-00805f9b34fb',
+  '49535343-fe7d-4ae5-8fa9-9fb0d74d0b40'
+];
+const W = 384, M = 12, IND = 34;             // 384 dots = 58 mm paper
+const F_DAY  = '700 20px Inter, "Helvetica Neue", Arial, sans-serif';
+const F_ITEM = '600 25px Inter, "Helvetica Neue", Arial, sans-serif';
+const F_META = '400 18px Inter, "Helvetica Neue", Arial, sans-serif';
+
+// ---------- visitor count ----------
+function showVisitors() {
+  if (GC_CODE === 'YOURCODE') { $('visitors').textContent = 'not set'; return; }
+  fetch('https://' + GC_CODE + '.goatcounter.com/counter/TOTAL.json')
+    .then(r => r.json()).then(j => { $('visitors').textContent = j.count; })
+    .catch(() => { $('visitors').textContent = '–'; });
+}
+
+// ---------- device ----------
+function deviceLabel() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/CrOS/.test(ua)) return 'Chromebook';
+  if (/Linux/.test(ua)) return 'Linux PC';
+  return 'Device';
+}
+const DEVICE = deviceLabel();
+$('devChip').textContent = DEVICE;
+
+// ---------- storage ----------
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { items: [] }; } catch (e) { return { items: [] }; } }
+let state = load();
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+// ---------- dates ----------
+const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+const timeStr = ts => new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+function dayLabel(ts) {
+  const now = new Date();
+  const yest = new Date(); yest.setDate(now.getDate() - 1);
+  if (dayKey(ts) === dayKey(now)) return 'Today';
+  if (dayKey(ts) === dayKey(yest)) return 'Yesterday';
+  return new Date(ts).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ---------- toast ----------
+let toastT;
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+
+// ---------- Bluetooth ----------
+let device = null, ch = null;
+const isOn = () => !!(ch && device && device.gatt && device.gatt.connected);
+
+function ui() {
+  const on = isOn();
+  $('dot').classList.toggle('on', on);
+  $('ptxt').textContent = on ? 'Connected · ' + (device.name || 'Printer') : 'Printer off';
+  $('pbtn').textContent = on ? 'Disconnect' : 'Connect';
+}
+
+async function openGatt() {
+  if (!device.__listening) {
+    device.addEventListener('gattserverdisconnected', () => { ch = null; ui(); });
+    device.__listening = true;
+  }
+  const server = await device.gatt.connect();
+  let preferred = null, fallback = null;
+  for (const svc of await server.getPrimaryServices()) {
+    for (const c of await svc.getCharacteristics()) {
+      if (!(c.properties.writeWithoutResponse || c.properties.write)) continue;
+      if (c.uuid.indexOf('ff02') >= 0) preferred = c; else if (!fallback) fallback = c;
+    }
+  }
+  ch = preferred || fallback;
+  if (!ch) throw new Error('No printing port found on this printer.');
+  ui();
+}
+
+async function pick() {
+  if (!navigator.bluetooth) throw new Error('Use Chrome or Edge on a computer or Android phone.');
+  device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: SERVICES });
+  localStorage.setItem(KEY + '-printer', device.id);
+  await openGatt();
+}
+
+async function rememberedDevice() {
+  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+  const id = localStorage.getItem(KEY + '-printer');
+  const list = await navigator.bluetooth.getDevices();
+  device = list.find(d => d.id === id) || (list.length === 1 ? list[0] : null);
+}
+
+async function ensureConnected() {
+  if (isOn()) return;
+  if (!device) await rememberedDevice();
+  if (!device) throw new Error('Tap Connect first.');
+  try { await openGatt(); }
+  catch (e) { ch = null; ui(); throw new Error('Printer not responding. Turn it on.'); }
+}
+
+async function send(bytes) {
+  const CH = 100;
+  for (let i = 0; i < bytes.length; i += CH) {
+    const part = bytes.slice(i, i + CH);
+    if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(part);
+    else await ch.writeValue(part);
+    await new Promise(r => setTimeout(r, 20));
+  }
+}
+
+// ---------- printing: task + time only; day heading only when a printed list spans several days ----------
+function wrapCanvas(g, text, maxW) {
+  g.font = F_ITEM;
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const cand = line ? line + ' ' + w : w;
+    if (line && g.measureText(cand).width > maxW) { lines.push(line); line = w; }
+    else line = cand;
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function printRows(items) {
+  const multi = new Set(items.map(i => dayKey(i.addedAt))).size > 1;
+  const rows = [];
+  let last = null;
+  for (const it of items) {
+    const k = dayKey(it.addedAt);
+    if (multi && k !== last) { rows.push({ day: dayLabel(it.addedAt) }); last = k; }
+    rows.push({ it });
+  }
+  return rows;
+}
+
+function layout(g, rows, draw) {
+  g.textBaseline = 'top';
+  g.fillStyle = '#000';
+  g.strokeStyle = '#000';
+  g.lineWidth = 2;
+  const txt = (font, s, x, y) => { if (draw) { g.font = font; g.fillText(s, x, y); } };
+  let y = 10;
+  for (const r of rows) {
+    if (r.day) {
+      txt(F_DAY, r.day, M, y);
+      y += 28;
+      if (draw) g.fillRect(M, y, W - 2 * M, 2);
+      y += 10;
+      continue;
+    }
+    const it = r.it;
+    const lines = wrapCanvas(g, it.text, W - M - IND - M);
+    const top = y;
+    lines.forEach((ln, i) => txt(F_ITEM, ln, M + IND, top + i * 31));
+    if (draw) {
+      const by = top + 4;
+      if (it.priority === 'high') g.fillRect(M, by, 20, 20);
+      else g.strokeRect(M + 1, by + 1, 18, 18);
+    }
+    y = top + lines.length * 31;
+    txt(F_META, timeStr(it.addedAt), M + IND, y + 2);
+    y += 26 + 14;
+  }
+  return y + 6;
+}
+
+async function renderRaster(items) {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  const rows = printRows(items);
+  const m = document.createElement('canvas').getContext('2d');
+  const H = layout(m, rows, false);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, W, H);
+  layout(g, rows, true);
+  const px = g.getImageData(0, 0, W, H).data;
+  const bpr = W / 8;
+  const bytes = [0x1b, 0x40, 0x1f, 0x11, 0x02, 0x04, 0x1d, 0x76, 0x30, 0x00, bpr & 255, bpr >> 8, H & 255, H >> 8];
+  for (let y = 0; y < H; y++) {
+    for (let xb = 0; xb < bpr; xb++) {
+      let b = 0;
+      for (let bit = 0; bit < 8; bit++) {
+        const i = (y * W + xb * 8 + bit) * 4;
+        if (px[i] < 128) b |= (0x80 >> bit);
+      }
+      bytes.push(b);
+    }
+  }
+  bytes.push(0x1b, 0x64, 0x02, 0x1f, 0x11, 0x08, 0x1f, 0x11, 0x0e, 0x1f, 0x11, 0x07, 0x1f, 0x11, 0x09);
+  return new Uint8Array(bytes);
+}
+
+async function printItems(items) {
+  await ensureConnected();
+  const PER = 6;
+  for (let i = 0; i < items.length; i += PER) {
+    await send(await renderRaster(items.slice(i, i + PER)));
+  }
+  ui();
+}
+
+// ---------- tasks ----------
+function addTaskText(text) {
+  text = text.trim();
+  if (!text) { toast('Type a task first'); return; }
+  const item = {
+    id: uid(), text, done: false,
+    priority: document.querySelector('input[name="pri"]:checked').value,
+    device: DEVICE, addedAt: Date.now()
+  };
+  state.items.unshift(item);
+  persist();
+  render();
+  if ($('prn').checked) {
+    printItems([item]).then(() => toast('Added and printed')).catch(e => toast('Added. ' + e.message));
+  } else toast('Added');
+}
+
+function mkBtn(label, fn, cls) {
+  const b = document.createElement('button');
+  b.className = 'btn small ' + (cls || 'gray');
+  b.textContent = label;
+  b.onclick = fn;
+  return b;
+}
+
+function itemRow(it) {
+  const row = document.createElement('div');
+  row.className = 'item' + (it.done ? ' done' : '');
+  const chk = document.createElement('button');
+  chk.className = 'check';
+  chk.textContent = it.done ? '✓' : '';
+  chk.onclick = () => { it.done = !it.done; persist(); render(); };
+  const body = document.createElement('div');
+  body.className = 'body';
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = it.text;
+  if (it.priority === 'high') { const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = 'HIGH'; title.appendChild(tg); }
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = timeStr(it.addedAt) + ' · ' + it.device;
+  const acts = document.createElement('div');
+  acts.className = 'acts';
+  acts.append(
+    mkBtn('Print', () => printItems([it]).then(() => toast('Printed')).catch(e => toast(e.message))),
+    mkBtn('Edit', () => openEdit(it)),
+    mkBtn('Delete', () => del(it), 'red')
+  );
+  body.append(title, meta, acts);
+  row.append(chk, body);
+  return row;
+}
+
+function render() {
+  const list = $('list');
+  list.innerHTML = '';
+  const open = state.items.filter(i => !i.done).length;
+  $('count').textContent = state.items.length ? open + ' open · ' + state.items.length + ' total' : '';
+  if (!state.items.length) list.innerHTML = '<p class="empty">No tasks yet. Add one above.</p>';
+  let last = null;
+  for (const it of state.items) {
+    const k = dayKey(it.addedAt);
+    if (k !== last) {
+      const h = document.createElement('div');
+      h.className = 'day';
+      h.textContent = dayLabel(it.addedAt);
+      list.append(h);
+      last = k;
+    }
+    list.append(itemRow(it));
+  }
+  renderSticky();
+}
+
+function del(it) {
+  if (!confirm('Delete this task?')) return;
+  state.items = state.items.filter(x => x !== it);
+  persist();
+  render();
+}
+
+let editing = null;
+function openEdit(it) { editing = it; $('editTxt').value = it.text; $('sheet').hidden = false; setTimeout(() => $('editTxt').focus(), 60); }
+function closeEdit() { $('sheet').hidden = true; editing = null; }
+$('editCancel').onclick = closeEdit;
+$('editSave').onclick = () => {
+  const v = $('editTxt').value.trim();
+  if (v && editing) { editing.text = v; persist(); render(); }
+  closeEdit();
+};
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeEdit(); });
+$('editTxt').addEventListener('keydown', e => { if (e.key === 'Enter') $('editSave').click(); });
+
+// ---------- sticky note (Document Picture-in-Picture: a window that stays on top) ----------
+let pipWin = null;
+const STICKY_CSS = `
+  body { margin: 0; background: #fff3a8; color: #2b2500; font-family: Inter, -apple-system, "Segoe UI", Arial, sans-serif; padding: 14px; }
+  h2 { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+  input { width: 100%; border: 0; outline: none; border-radius: 8px; padding: 9px 10px; font: inherit; font-size: 15px; background: rgba(255,255,255,.75); margin-bottom: 8px; }
+  .li { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dashed rgba(0,0,0,.2); font-size: 15px; }
+  .cb { width: 19px; height: 19px; border: 2px solid #6b5d00; border-radius: 5px; background: none; flex: none; cursor: pointer; padding: 0; margin-top: 1px; }
+  .txt { flex: 1; line-height: 1.3; overflow-wrap: anywhere; }
+  .tm { font-size: 12px; color: #6b5d00; margin-top: 2px; }
+  .hi { font-weight: 700; }
+  .empty { color: #6b5d00; font-size: 14px; }
+`;
+
+async function openSticky() {
+  if (!('documentPictureInPicture' in window)) {
+    toast('Sticky note needs Chrome or Edge on a computer.');
+    return;
+  }
+  if (pipWin && !pipWin.closed) { pipWin.focus(); return; }
+  try {
+    pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 420 });
+  } catch (e) { toast('Could not open the sticky note.'); return; }
+  const d = pipWin.document;
+  const st = d.createElement('style');
+  st.textContent = STICKY_CSS;
+  d.head.appendChild(st);
+  d.body.innerHTML = '<h2 id="sTitle"></h2><input id="sAdd" placeholder="Quick task, press Enter"><div id="sList"></div>';
+  d.getElementById('sAdd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const v = e.target.value; e.target.value = ''; addTaskText(v); }
+  });
+  pipWin.addEventListener('pagehide', () => { pipWin = null; });
+  renderSticky();
+}
+
+function renderSticky() {
+  if (!pipWin || pipWin.closed) return;
+  const d = pipWin.document;
+  const open = state.items.filter(i => !i.done);
+  d.getElementById('sTitle').textContent = 'Open tasks · ' + open.length;
+  const list = d.getElementById('sList');
+  list.innerHTML = '';
+  if (!open.length) { list.innerHTML = '<p class="empty">Nothing open. Nice.</p>'; return; }
+  for (const it of open) {
+    const row = d.createElement('div');
+    row.className = 'li';
+    const cb = d.createElement('button');
+    cb.className = 'cb';
+    cb.setAttribute('aria-label', 'Mark done');
+    cb.onclick = () => { it.done = true; persist(); render(); };
+    const body = d.createElement('div');
+    body.className = 'txt';
+    const t = d.createElement('div');
+    t.textContent = it.text;
+    if (it.priority === 'high') t.classList.add('hi');
+    const tm = d.createElement('div');
+    tm.className = 'tm';
+    tm.textContent = (dayKey(it.addedAt) === dayKey(Date.now()) ? '' : dayLabel(it.addedAt) + ' · ') + timeStr(it.addedAt);
+    body.append(t, tm);
+    row.append(cb, body);
+    list.append(row);
+  }
+}
+
+// ---------- wiring ----------
+$('addBtn').onclick = () => { const v = $('txt').value; $('txt').value = ''; addTaskText(v); };
+$('txt').addEventListener('keydown', e => { if (e.key === 'Enter') { const v = $('txt').value; $('txt').value = ''; addTaskText(v); } });
+
+$('stickyBtn').onclick = openSticky;
+
+$('pbtn').onclick = async () => {
+  try {
+    if (isOn()) { device.gatt.disconnect(); ch = null; ui(); toast('Printer disconnected'); }
+    else { await pick(); toast('Printer connected'); }
+  } catch (e) {
+    toast(e.name === 'NotFoundError' ? 'No printer selected' : (e.message || 'Connection failed'));
+  }
+};
+
+$('printOpen').onclick = () => {
+  const open = state.items.filter(i => !i.done);
+  if (!open.length) { toast('No open tasks'); return; }
+  printItems(open).then(() => toast('Printed ' + open.length + ' task(s)')).catch(e => toast(e.message));
+};
+
+$('cleanBtn').onclick = () => {
+  const days = Number(document.querySelector('input[name="age"]:checked').value);
+  const only = $('donly').checked;
+  const label = { 14: '2 weeks', 30: '1 month', 90: '3 months' }[days];
+  if (!confirm('Delete ' + (only ? 'completed ' : '') + 'tasks older than ' + label + '?')) return;
+  const cutoff = Date.now() - days * 86400000;
+  const before = state.items.length;
+  state.items = state.items.filter(i => !(i.addedAt < cutoff && (!only || i.done)));
+  persist();
+  render();
+  toast('Deleted ' + (before - state.items.length) + ' task(s)');
+};
+
+$('test').onclick = () => {
+  printItems([{ text: 'Test print. Printer works!', priority: 'normal', device: DEVICE, addedAt: Date.now() }])
+    .then(() => toast('Test printed')).catch(e => toast(e.message));
+};
+
+if (!navigator.bluetooth) {
+  $('browserNote').textContent = 'This browser cannot reach Bluetooth printers. Open this page in Chrome or Edge on a computer or Android phone.';
+  $('pbtn').disabled = true;
+  $('ptxt').textContent = 'Bluetooth unavailable';
+}
+if (!('documentPictureInPicture' in window)) {
+  $('stickyBtn').disabled = true;
+  $('stickyBtn').textContent = 'Sticky note needs Chrome or Edge';
+}
+
+(async () => {
+  try { await rememberedDevice(); if (device) await openGatt(); } catch (e) {}
+  ui();
+})();
+
+showVisitors();
+render();
+</script>
+</body>
+</html>
