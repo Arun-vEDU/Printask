@@ -61,7 +61,7 @@
   .opt-row:last-of-type { border-bottom: 0; }
   .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--fill); border-radius: 999px; padding: 5px 11px; font-size: 14px; color: var(--sub); }
 
-  .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; flex: 1; max-width: 260px; }
+  .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; flex: 1; max-width: 280px; }
   .opt { flex: 1; position: relative; }
   .opt input { position: absolute; opacity: 0; pointer-events: none; }
   .opt span { display: block; text-align: center; padding: 7px 6px; border-radius: 8px; font-size: 14px; cursor: pointer; user-select: none; }
@@ -162,6 +162,27 @@
   </div>
 
   <div class="card">
+    <h3>Print settings</h3>
+    <div class="opt-row">
+      <span>Font size</span>
+      <div class="seg">
+        <label class="opt"><input type="radio" name="fsize" value="small"><span>Small</span></label>
+        <label class="opt"><input type="radio" name="fsize" value="medium" checked><span>Medium</span></label>
+        <label class="opt"><input type="radio" name="fsize" value="large"><span>Large</span></label>
+      </div>
+    </div>
+    <div class="opt-row">
+      <span>Darkness</span>
+      <div class="seg">
+        <label class="opt"><input type="radio" name="dark" value="light"><span>Light</span></label>
+        <label class="opt"><input type="radio" name="dark" value="normal" checked><span>Normal</span></label>
+        <label class="opt"><input type="radio" name="dark" value="dark"><span>Dark</span></label>
+      </div>
+    </div>
+    <p class="note">Each printed task shows its date and time. Darkness changes how bold the print is; try Normal first.</p>
+  </div>
+
+  <div class="card">
     <div class="list-head">
       <h3 style="margin:0">Tasks</h3>
       <button class="btn small gray" id="printOpen">Print open</button>
@@ -217,6 +238,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const KEY = 'printask-v4';
+const SKEY = KEY + '-settings';
 const GC_CODE = 'YOURCODE';                  // your GoatCounter code
 const SERVICES = [
   '0000ff00-0000-1000-8000-00805f9b34fb',
@@ -225,10 +247,18 @@ const SERVICES = [
   '0000ae30-0000-1000-8000-00805f9b34fb',
   '49535343-fe7d-4ae5-8fa9-9fb0d74d0b40'
 ];
-const W = 384, M = 12, IND = 34;             // 384 dots = 58 mm paper
-const F_DAY  = '700 20px Inter, "Helvetica Neue", Arial, sans-serif';
-const F_ITEM = '600 25px Inter, "Helvetica Neue", Arial, sans-serif';
-const F_META = '400 18px Inter, "Helvetica Neue", Arial, sans-serif';
+const W = 384, M = 12;                       // 384 dots = 58 mm paper (203 dpi)
+const S = 3;                                 // supersampling factor: draw 3x, then average down for smooth edges
+const FAM = 'Inter, "Helvetica Neue", Arial, sans-serif';
+
+// ---------- settings ----------
+let settings = { size: 'medium', dark: 'normal' };
+try { Object.assign(settings, JSON.parse(localStorage.getItem(SKEY)) || {}); } catch (e) {}
+function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(settings)); } catch (e) {} }
+document.querySelector('input[name="fsize"][value="' + settings.size + '"]').checked = true;
+document.querySelector('input[name="dark"][value="' + settings.dark + '"]').checked = true;
+document.querySelectorAll('input[name="fsize"]').forEach(r => r.onchange = () => { settings.size = r.value; saveSettings(); });
+document.querySelectorAll('input[name="dark"]').forEach(r => r.onchange = () => { settings.dark = r.value; saveSettings(); });
 
 // ---------- visitor count ----------
 function showVisitors() {
@@ -262,6 +292,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 // ---------- dates ----------
 const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 const timeStr = ts => new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const dateTimeStr = ts => new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 function dayLabel(ts) {
   const now = new Date();
   const yest = new Date(); yest.setDate(now.getDate() - 1);
@@ -320,9 +351,14 @@ async function rememberedDevice() {
 async function ensureConnected() {
   if (isOn()) return;
   if (!device) await rememberedDevice();
-  if (!device) throw new Error('Tap Connect first.');
-  try { await openGatt(); }
-  catch (e) { ch = null; ui(); throw new Error('Printer not responding. Turn it on.'); }
+  if (device) {
+    // reuse the printer silently if the browser still remembers it
+    try { await openGatt(); await new Promise(r => setTimeout(r, 800)); return; }
+    catch (e) { ch = null; ui(); }
+  }
+  // no usable connection: open the picker. It works here because the user just pressed Print.
+  await pick();
+  await new Promise(r => setTimeout(r, 800));
 }
 
 async function send(bytes) {
@@ -335,9 +371,13 @@ async function send(bytes) {
   }
 }
 
-// ---------- printing: task + time only; day heading only when a printed list spans several days ----------
-function wrapCanvas(g, text, maxW) {
-  g.font = F_ITEM;
+// ---------- printing ----------
+// Text is drawn at S times the printer resolution, then each S x S block is averaged to one dot.
+// This gives smooth, sharper letter edges than a simple black-or-white cut-off.
+function fontPx() { return { small: 20, medium: 26, large: 34 }[settings.size] || 26; }
+
+function wrapCanvas(g, text, maxW, font) {
+  g.font = font;
   const words = String(text).split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
@@ -350,69 +390,67 @@ function wrapCanvas(g, text, maxW) {
   return lines.length ? lines : [''];
 }
 
-function printRows(items) {
-  const multi = new Set(items.map(i => dayKey(i.addedAt))).size > 1;
-  const rows = [];
-  let last = null;
-  for (const it of items) {
-    const k = dayKey(it.addedAt);
-    if (multi && k !== last) { rows.push({ day: dayLabel(it.addedAt) }); last = k; }
-    rows.push({ it });
-  }
-  return rows;
-}
-
-function layout(g, rows, draw) {
+// Lays out the items (in scaled units). Returns the total height in scaled units.
+function layout(g, items, draw) {
+  const sz = fontPx();
+  const itemFont = `600 ${sz * S}px ${FAM}`;
+  const metaFont = `500 ${16 * S}px ${FAM}`;
+  const lh = Math.round(sz * 1.28) * S;
+  const boxS = Math.round(sz * 0.72) * S;
+  const m = M * S;
+  const textX = m + boxS + 12 * S;
+  const textW = W * S - textX - m;
   g.textBaseline = 'top';
   g.fillStyle = '#000';
   g.strokeStyle = '#000';
-  g.lineWidth = 2;
-  const txt = (font, s, x, y) => { if (draw) { g.font = font; g.fillText(s, x, y); } };
-  let y = 10;
-  for (const r of rows) {
-    if (r.day) {
-      txt(F_DAY, r.day, M, y);
-      y += 28;
-      if (draw) g.fillRect(M, y, W - 2 * M, 2);
-      y += 10;
-      continue;
-    }
-    const it = r.it;
-    const lines = wrapCanvas(g, it.text, W - M - IND - M);
+  g.lineWidth = 2 * S;
+  let y = 8 * S;
+  for (const it of items) {
+    const lines = wrapCanvas(g, it.text, textW, itemFont);
     const top = y;
-    lines.forEach((ln, i) => txt(F_ITEM, ln, M + IND, top + i * 31));
     if (draw) {
-      const by = top + 4;
-      if (it.priority === 'high') g.fillRect(M, by, 20, 20);
-      else g.strokeRect(M + 1, by + 1, 18, 18);
+      g.font = itemFont;
+      lines.forEach((ln, i) => g.fillText(ln, textX, top + i * lh));
+      const by = top + Math.round((lh - boxS) / 2);
+      if (it.priority === 'high') g.fillRect(m, by, boxS, boxS);
+      else g.strokeRect(m + S, by + S, boxS - 2 * S, boxS - 2 * S);
     }
-    y = top + lines.length * 31;
-    txt(F_META, timeStr(it.addedAt), M + IND, y + 2);
-    y += 26 + 14;
+    y = top + lines.length * lh;
+    if (draw) { g.font = metaFont; g.fillText(dateTimeStr(it.addedAt), textX, y + 2 * S); }
+    y += Math.round(16 * 1.4) * S + 12 * S;
   }
-  return y + 6;
+  return y;
 }
 
 async function renderRaster(items) {
   if (document.fonts && document.fonts.ready) await document.fonts.ready;
-  const rows = printRows(items);
-  const m = document.createElement('canvas').getContext('2d');
-  const H = layout(m, rows, false);
+  const probe = document.createElement('canvas').getContext('2d');
+  const hs = layout(probe, items, false);
+  const H = Math.ceil(hs / S) + 4;                       // final height in printer dots
   const c = document.createElement('canvas');
-  c.width = W; c.height = H;
+  c.width = W * S; c.height = H * S;
   const g = c.getContext('2d');
   g.fillStyle = '#fff';
-  g.fillRect(0, 0, W, H);
-  layout(g, rows, true);
-  const px = g.getImageData(0, 0, W, H).data;
+  g.fillRect(0, 0, W * S, H * S);
+  layout(g, items, true);
+  const px = g.getImageData(0, 0, W * S, H * S).data;
+
+  // darkness: a higher threshold means more of each averaged dot turns black
+  const thr = { light: 110, normal: 150, dark: 190 }[settings.dark] || 150;
   const bpr = W / 8;
   const bytes = [0x1b, 0x40, 0x1f, 0x11, 0x02, 0x04, 0x1d, 0x76, 0x30, 0x00, bpr & 255, bpr >> 8, H & 255, H >> 8];
   for (let y = 0; y < H; y++) {
     for (let xb = 0; xb < bpr; xb++) {
       let b = 0;
       for (let bit = 0; bit < 8; bit++) {
-        const i = (y * W + xb * 8 + bit) * 4;
-        if (px[i] < 128) b |= (0x80 >> bit);
+        const x = xb * 8 + bit;
+        let sum = 0;
+        for (let dy = 0; dy < S; dy++) {
+          for (let dx = 0; dx < S; dx++) {
+            sum += px[((y * S + dy) * W * S + (x * S + dx)) * 4];
+          }
+        }
+        if (sum / (S * S) < thr) b |= (0x80 >> bit);
       }
       bytes.push(b);
     }
@@ -423,6 +461,9 @@ async function renderRaster(items) {
 
 async function printItems(items) {
   await ensureConnected();
+  // reset the printer and clear its buffer so no leftover bytes print as garbage
+  await send(new Uint8Array([0x1b, 0x40, ...new Array(32).fill(0)]));
+  await new Promise(r => setTimeout(r, 300));
   const PER = 6;
   for (let i = 0; i < items.length; i += PER) {
     await send(await renderRaster(items.slice(i, i + PER)));
@@ -580,7 +621,7 @@ function renderSticky() {
     if (it.priority === 'high') t.classList.add('hi');
     const tm = d.createElement('div');
     tm.className = 'tm';
-    tm.textContent = (dayKey(it.addedAt) === dayKey(Date.now()) ? '' : dayLabel(it.addedAt) + ' · ') + timeStr(it.addedAt);
+    tm.textContent = dateTimeStr(it.addedAt);
     body.append(t, tm);
     row.append(cb, body);
     list.append(row);
